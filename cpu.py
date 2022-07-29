@@ -2,12 +2,15 @@ from dataclasses import dataclass
 from unicodedata import decimal
 import numpy as np
 from fonts import FONTS
+import pygame
+from gpu import draw_from_np_binary
 
 
 @dataclass(frozen=True)
 class Opcode:
 
     def __init__(self) -> None:
+        self.opcode: np.ushort
         self.NNN: np.ushort
         self.NN: np.ushort
         self.N: np.ubyte
@@ -16,7 +19,7 @@ class Opcode:
 
     @classmethod
     def adapt(cls, opcode: np.ushort):
-
+        cls.opcode = opcode
         cls.NNN = opcode & 0x0FFF
         cls.NN = opcode & 0x00FF
         cls.N = opcode & 0x000F
@@ -46,11 +49,93 @@ class CPU:
         self.ram[self.FONTS_ADDRESS_MEMORY:self.FONTS_ADDRESS_MEMORY +
                  FONTS.shape[0]] = FONTS
 
+        self.draw = False
+
     def load_rom_to_ram(self, path: str) -> None:
         with open(path, "rb") as file:
             buffer = file.read()
         buffer_np = np.array(list(buffer), dtype=np.ubyte)
         self.ram[self.pc:self.pc + buffer_np.shape[0]] = buffer_np
+
+    def cpu_cycle(self, screen):
+        opcode_temp = (self.ram[self.pc] << 0x8) | self.ram[self.pc + 1]
+        opcode = Opcode.adapt(opcode_temp)
+
+        self.screen = screen  #fix later
+
+        self.pc += 2
+
+        self.instruction_look_up(opcode)
+
+        if self.dt > 0:
+            self.dt -= 1
+
+        if self.st > 0:
+            self.st -= 1
+
+    def instruction_look_up(self, opcode: Opcode):
+
+        zero_look_up_dict = {
+            0x0: self.op_cls,
+            0xE: self.op_ret,
+        }
+
+        Arthicmatics_look_up_dict = {
+            0x0: self.op_ld_vx_vy,
+            0x1: self.op_or_vx_vy,
+            0x2: self.op_and_vx_vy,
+            0x3: self.op_xor_vx_vy,
+            0x4: self.op_add_vx_vy,
+            0x5: self.op_sub_vx_vy,
+            0x6: self.op_shr_vx_vy,
+            0x7: self.op_subn_vx_vy,
+            0xE: self.op_shl_vx_vy,
+        }
+
+        FE_look_up_dict = {
+            0xA1: self.op_sknp_vx,
+            0x9E: self.op_skp_vx,
+            0x07: self.op_ld_vx_dt,
+            0x0A: self.op_ld_vx_k,
+            0x15: self.op_ld_dt_vx,
+            0x18: self.op_ld_st_vx,
+            0x1E: self.op_add_i_vx,
+            0x29: self.op_ld_f_vx,
+            0x33: self.op_ld_b_vx,
+            0x55: self.op_ld_i_vx,
+            0x65: self.op_ld_vx_i,
+        }
+
+        def zero_lookup(_):
+            zero_look_up_dict[opcode.N](opcode)
+
+        def Arthicmatics_lookup(_):
+            Arthicmatics_look_up_dict[opcode.N](opcode)
+
+        def FE_lookup(_):
+            FE_look_up_dict[opcode.NN](opcode)
+
+        general_look_up_dict = {
+            0x0: zero_lookup,
+            0x1: self.op_jp_addr,
+            0x2: self.op_call_addr,
+            0x3: self.op_se_vx_byte,
+            0x4: self.op_sne_vx_byte,
+            0x5: self.op_se_vx_vy,
+            0x6: self.op_ld_vx_byte,
+            0x7: self.op_add_vx_byte,
+            0x8: Arthicmatics_lookup,
+            0x9: self.op_sne_vx_vy,
+            0xA: self.op_ld_i_addr,
+            0xB: self.op_jp_v0_addr,
+            0xC: self.op_rnd_vx_byte,
+            0xD: self.op_drw_vx_vy_nibble,
+            0xE: FE_lookup,
+            0xF: FE_lookup
+        }
+
+        index = (opcode.opcode & 0xF000) >> 12
+        general_look_up_dict[index](opcode)
 
     def op_cls(self, opcode: Opcode):
         # 00E0
@@ -178,13 +263,13 @@ class CPU:
                 sprite_bit = sprite_byte & (0x80 >> i)
                 current_bit = self.frame_buffer[wrapped_pos_x + i,
                                                 wrapped_pos_y + j]
-                if current_bit == 1 and sprite_bit == 1:
+                if current_bit == 1 and sprite_bit:
                     self.v[0xF] = 1
                     self.frame_buffer[wrapped_pos_x + i, wrapped_pos_y + j] = 0
-                elif current_bit == 0 and sprite_bit == 1:
+                elif current_bit == 0 and sprite_bit:
                     self.frame_buffer[wrapped_pos_x + i, wrapped_pos_y + j] = 1
 
-        #draw to the screen from here
+        self.draw = True
         # test this later
 
     def op_skp_vx(self, opcode: Opcode):
@@ -205,7 +290,11 @@ class CPU:
 
     def op_ld_vx_k(self, opcode: Opcode):
         # Fx0A
-        raise NotImplementedError
+        pressed_keys = np.where(self.keys == 1)[0]
+        if np.size(pressed_keys) == 0:
+            self.pc -= 2
+        else:
+            self.v[opcode.x] = pressed_keys[0]
 
     def op_ld_dt_vx(self, opcode: Opcode):
         # Fx15

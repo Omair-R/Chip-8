@@ -390,5 +390,26 @@ class TestCPU(unittest.TestCase):
         for i in range(testcpu.v.shape[0]):
             self.assertEqual(testcpu.ram[testcpu.i + i], testcpu.v[i])
 
+    def test_op_ld_vx_k(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF355))
+
+        testcpu.op_ld_vx_k(testopcode)
+
+        self.assertNotEqual(testcpu.v[testopcode.x], 2)
+        self.assertEqual(testcpu.pc, 510)
+
+        testcpu.keys[5] = 1
+
+        testcpu.op_ld_vx_k(testopcode)
+
+        self.assertEqual(testcpu.v[testopcode.x], 5)
+
+        testcpu.keys[2] = 1
+
+        testcpu.op_ld_vx_k(testopcode)
+
+        self.assertEqual(testcpu.v[testopcode.x], 2)
+
 
 unittest.main()
