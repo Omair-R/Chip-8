@@ -31,7 +31,7 @@ class CPU:
     def __init__(self):
         self.v = np.zeros(16, dtype=np.ubyte)
         self.i: np.ushort = 0
-        self.stack = np.zeros(64, dtype=np.ubyte)
+        self.stack = np.zeros(64, dtype=np.ushort)
         self.sp: np.ubyte = 0
         self.dt: np.ubyte = 0
         self.st: np.ubyte = 0
@@ -53,7 +53,7 @@ class CPU:
 
     def op_ret(self, opcode: Opcode):
         # 00EE
-        --self.sp
+        self.sp -= 1
         self.pc = self.stack[self.sp]
 
     def op_jp_addr(self, opcode: Opcode):
@@ -62,8 +62,9 @@ class CPU:
 
     def op_call_addr(self, opcode: Opcode):
         # 2nnn
+
         self.stack[self.sp] = self.pc
-        ++self.sp
+        self.sp += 1
         self.pc = opcode.NNN
 
     def op_se_vx_byte(self, opcode: Opcode):
