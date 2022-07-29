@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from unicodedata import decimal
 import numpy as np
 from fonts import FONTS
 import pygame
-from gpu import draw_from_np_binary
+from gpu import scale_rect, Colors
 
 
 @dataclass(frozen=True)
@@ -35,7 +34,7 @@ class CPU:
     WIDTH = np.ubyte(64)
     HEIGHT = np.ubyte(32)
 
-    def __init__(self):
+    def __init__(self, screen):
         self.v = np.zeros(16, dtype=np.ubyte)
         self.i: np.ushort = 0
         self.stack = np.zeros(64, dtype=np.ushort)
@@ -48,6 +47,7 @@ class CPU:
         self.keys = np.zeros(16, dtype=np.bool_)
         self.ram[self.FONTS_ADDRESS_MEMORY:self.FONTS_ADDRESS_MEMORY +
                  FONTS.shape[0]] = FONTS
+        self.screen = screen
 
     def load_rom_to_ram(self, path: str) -> None:
         with open(path, "rb") as file:
@@ -55,11 +55,9 @@ class CPU:
         buffer_np = np.array(list(buffer), dtype=np.ubyte)
         self.ram[self.pc:self.pc + buffer_np.shape[0]] = buffer_np
 
-    def cpu_cycle(self, screen):
+    def cpu_cycle(self):
         opcode_temp = (self.ram[self.pc] << 0x8) | self.ram[self.pc + 1]
         opcode = Opcode.adapt(opcode_temp)
-
-        self.screen = screen  #fix later
 
         self.pc += 2
 
@@ -138,6 +136,7 @@ class CPU:
     def op_cls(self, opcode: Opcode):
         # 00E0
         self.frame_buffer = np.zeros([self.WIDTH, self.HEIGHT], dtype=np.bool_)
+        self.screen.fill(Colors.black)
 
     def op_ret(self, opcode: Opcode):
         # 00EE
@@ -251,24 +250,28 @@ class CPU:
 
     def op_drw_vx_vy_nibble(self, opcode: Opcode):
         # Dxyn
-        wrapped_pos_x = self.v[opcode.x]
-        wrapped_pos_y = self.v[opcode.y]
         self.v[0xF] = 0
 
         for j in range(opcode.N):
             sprite_byte = self.ram[self.i + j]
+
             for i in range(8):
                 sprite_bit = sprite_byte & (0x80 >> i)
-                pos_x = (wrapped_pos_x + i) % self.WIDTH
-                pos_y = (wrapped_pos_y + j) % self.HEIGHT
+                pos_x = (self.v[opcode.x] + i) % self.WIDTH
+                pos_y = (self.v[opcode.y] + j) % self.HEIGHT
                 current_bit = self.frame_buffer[pos_x, pos_y]
+
                 if current_bit == 1 and sprite_bit:
                     self.v[0xF] = 1
                     self.frame_buffer[pos_x, pos_y] = 0
+                    pygame.draw.rect(self.screen, Colors.black,
+                                     scale_rect([pos_x, pos_y]))
+
                 elif current_bit == 0 and sprite_bit:
                     self.frame_buffer[pos_x, pos_y] = 1
+                    pygame.draw.rect(self.screen, Colors.white,
+                                     scale_rect([pos_x, pos_y]))
 
-        draw_from_np_binary(self.frame_buffer, self.screen)
         pygame.display.update()
         # test this later
 
