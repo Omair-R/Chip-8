@@ -1,3 +1,5 @@
+import argparse
+from ast import arg
 import numpy as np
 import pygame
 import sys
@@ -5,9 +7,30 @@ from cpu import CPU
 import gpu
 from key_map import key_map
 
+parser = argparse.ArgumentParser(description="Chip-8")
+
+parser.add_argument("rom", type=str, help="The path to the rom file")
+parser.add_argument(
+    "-d",
+    "--delay",
+    default=1,
+    type=int,
+    help="the delay time the cpu takes before performing another operation.")
+parser.add_argument(
+    "-s",
+    "--scale",
+    default=15,
+    type=int,
+    help="the delay time the cpu takes before performing another operation.")
+
+args = parser.parse_args()
+
+gpu.scale = args.scale
+gpu.delaytime = args.delay
 pygame.init()
 
-screen = pygame.display.set_mode((gpu.width, gpu.height))
+screen = pygame.display.set_mode(
+    (gpu.width * gpu.scale, gpu.height * gpu.scale))
 
 pygame.display.set_caption("Chip-8")
 
@@ -16,8 +39,7 @@ screen.fill(gpu.Colors.black)
 clock = pygame.time.Clock()
 
 cpu = CPU(screen)
-cpu.load_rom_to_ram(
-    r'C:\Personal_Files\Projects\Github\Chip-8\Chip-8-RL\roms\Paddles.ch8')
+cpu.load_rom_to_ram(args.rom)
 
 while True:
 

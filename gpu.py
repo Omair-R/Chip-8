@@ -2,9 +2,11 @@ from pygame import Color
 import typing
 
 delaytime: int = 1
+
 scale: int = 15
-width: int = 64 * scale
-height: int = 32 * scale
+
+width: int = 64
+height: int = 32
 
 
 class Colors:
