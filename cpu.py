@@ -62,7 +62,6 @@ class CPU:
 
     def op_call_addr(self, opcode: Opcode):
         # 2nnn
-
         self.stack[self.sp] = self.pc
         self.sp += 1
         self.pc = opcode.NNN
@@ -79,39 +78,52 @@ class CPU:
 
     def op_se_vx_vy(self, opcode: Opcode):
         # 5xy0
-        raise NotImplementedError
+        if self.v[opcode.x] == self.v[opcode.y]:
+            self.pc += 2
 
     def op_ld_vx_byte(self, opcode: Opcode):
         # 6xkk
-        raise NotImplementedError
+        self.v[opcode.x] = opcode.NN
 
     def op_add_vx_byte(self, opcode: Opcode):
         # 7xkk
-        raise NotImplementedError
+        self.v[opcode.x] += opcode.NN
 
     def op_ld_vx_vy(self, opcode: Opcode):
         # 8xy0
-        raise NotImplementedError
+        self.v[opcode.x] = self.v[opcode.y]
 
     def op_or_vx_vy(self, opcode: Opcode):
         # 8xy1
-        raise NotImplementedError
+        self.v[opcode.x] |= self.v[opcode.y]
 
     def op_and_vx_vy(self, opcode: Opcode):
         # 8xy2
-        raise NotImplementedError
+        self.v[opcode.x] &= self.v[opcode.y]
 
     def op_xor_vx_vy(self, opcode: Opcode):
         # 8xy3
-        raise NotImplementedError
+        self.v[opcode.x] ^= self.v[opcode.y]
 
     def op_add_vx_vy(self, opcode: Opcode):
         # 8xy4
-        raise NotImplementedError
+        vx = np.ushort(self.v[opcode.x]) + np.ushort(self.v[opcode.y])
+
+        self.v[0xF] = 0
+
+        if vx > 255:
+            self.v[0xF] = 1
+
+        self.v[opcode.x] = vx & 0xFF
 
     def op_sub_vx_vy(self, opcode: Opcode):
         # 8xy5
-        raise NotImplementedError
+        self.v[0xF] = 0
+
+        if self.v[opcode.x] > self.v[opcode.y]:
+            self.v[0xF] = 1
+
+        self.v[opcode.x] -= self.v[opcode.y]
 
     def op_shr_vx_vy(self, opcode: Opcode):
         # 8xy6

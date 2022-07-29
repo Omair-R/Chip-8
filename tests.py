@@ -89,7 +89,7 @@ class TestCPU(unittest.TestCase):
 
     def test_op_sne_vx_byte(self):
         testcpu = cpu.CPU()
-        testopcode = cpu.Opcode.adapt(np.ushort(0x33B4))
+        testopcode = cpu.Opcode.adapt(np.ushort(0x43B4))
 
         testcpu.v[3] = 0xB4
         testcpu.op_sne_vx_byte(testopcode)
@@ -98,6 +98,113 @@ class TestCPU(unittest.TestCase):
         testcpu.v[3] = 0xB5
         testcpu.op_sne_vx_byte(testopcode)
         self.assertEqual(testcpu.pc, 0x202)
+
+    def test_op_se_vx_vy(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x5344))
+
+        testcpu.v[3] = 0xB4
+        testcpu.v[4] = 0xB5
+        testcpu.op_se_vx_vy(testopcode)
+        self.assertEqual(testcpu.pc, 0x200)
+
+        testcpu.v[3] = 0xB4
+        testcpu.v[4] = 0xB4
+        testcpu.op_se_vx_vy(testopcode)
+        self.assertEqual(testcpu.pc, 0x202)
+
+    def test_op_ld_vx_byte(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x6344))
+
+        testcpu.op_ld_vx_byte(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x44)
+
+    def test_op_add_vx_byte(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x6344))
+
+        testcpu.op_add_vx_byte(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x44)
+
+        testcpu.op_add_vx_byte(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x44 + 0x44)
+
+    def test_op_ld_vx_vy(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x7344))
+        testcpu.v[4] = 0x68
+        testcpu.op_ld_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x68)
+
+        testcpu.v[4] = 0xAA
+        testcpu.op_ld_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0xAA)
+
+    def test_op_or_vx_vy(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x8341))
+
+        testcpu.v[4] = 0xAA
+        testcpu.op_or_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0xAA)
+
+        testcpu.v[4] = 0x55
+        testcpu.op_or_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0xFF)
+
+    def test_op_and_vx_vy(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x8341))
+
+        testcpu.v[3] = 0xAA
+        testcpu.v[4] = 0x0F
+        testcpu.op_and_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x0A)
+
+    def test_op_xor_vx_vy(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x8341))
+
+        testcpu.v[3] = 0xAF
+        testcpu.v[4] = 0x0F
+        testcpu.op_xor_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0xA0)
+
+        testcpu.op_xor_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0xAF)
+
+    def test_op_add_vx_vy(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x8341))
+
+        testcpu.v[3] = 0x0F
+        testcpu.v[4] = 0x0F
+        testcpu.op_add_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x1E)
+        self.assertEqual(testcpu.v[0xF], 0)
+
+        testcpu.v[3] = 0xFF
+        testcpu.v[4] = 0x0F
+        testcpu.op_add_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x0E)
+        self.assertEqual(testcpu.v[0xF], 1)
+
+    def test_op_sub_vx_vy(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0x8341))
+
+        testcpu.v[3] = 0x0F
+        testcpu.v[4] = 0x0F
+        testcpu.op_sub_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x00)
+        self.assertEqual(testcpu.v[0xF], 0)
+
+        testcpu.v[3] = 0xFF
+        testcpu.v[4] = 0x0F
+        testcpu.op_sub_vx_vy(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0xF0)
+        self.assertEqual(testcpu.v[0xF], 1)
 
 
 unittest.main()
