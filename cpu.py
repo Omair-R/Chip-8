@@ -127,31 +127,39 @@ class CPU:
 
     def op_shr_vx_vy(self, opcode: Opcode):
         # 8xy6
-        raise NotImplementedError
+        self.v[0xF] = self.v[opcode.x] & 0x1
+        self.v[opcode.x] >>= 1
 
     def op_subn_vx_vy(self, opcode: Opcode):
         # 8xy7
-        raise NotImplementedError
+        self.v[0xF] = 0
+
+        if self.v[opcode.y] > self.v[opcode.x]:
+            self.v[0xF] = 1
+
+        self.v[opcode.x] = self.v[opcode.y] - self.v[opcode.x]
 
     def op_shl_vx_vy(self, opcode: Opcode):
         # 8xyE
-        raise NotImplementedError
+        self.v[0xF] = (self.v[opcode.x] & 0x80) >> 7
+        self.v[opcode.x] <<= 1
 
     def op_sne_vx_vy(self, opcode: Opcode):
         # 9xy0
-        raise NotImplementedError
+        if self.v[opcode.x] != self.v[opcode.y]:
+            self.pc += 2
 
     def op_ld_i_addr(self, opcode: Opcode):
         # Annn
-        raise NotImplementedError
+        self.i = opcode.NNN
 
     def op_jp_v0_addr(self, opcode: Opcode):
         # Bnnn
-        raise NotImplementedError
+        self.pc = opcode.NNN + self.v[0]
 
     def op_rnd_vx_byte(self, opcode: Opcode):
         # Cxkk
-        raise NotImplementedError
+        self.v[opcode.x] = np.random.randint(255) & opcode.NN
 
     def op_drw_vx_vy_nibble(self, opcode: Opcode):
         # Dxyn
