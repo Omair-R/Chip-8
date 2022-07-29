@@ -49,8 +49,6 @@ class CPU:
         self.ram[self.FONTS_ADDRESS_MEMORY:self.FONTS_ADDRESS_MEMORY +
                  FONTS.shape[0]] = FONTS
 
-        self.draw = False
-
     def load_rom_to_ram(self, path: str) -> None:
         with open(path, "rb") as file:
             buffer = file.read()
@@ -253,23 +251,25 @@ class CPU:
 
     def op_drw_vx_vy_nibble(self, opcode: Opcode):
         # Dxyn
-        wrapped_pos_x = self.v[opcode.x] % self.WIDTH
-        wrapped_pos_y = self.v[opcode.y] % self.HEIGHT
+        wrapped_pos_x = self.v[opcode.x]
+        wrapped_pos_y = self.v[opcode.y]
         self.v[0xF] = 0
 
         for j in range(opcode.N):
             sprite_byte = self.ram[self.i + j]
             for i in range(8):
                 sprite_bit = sprite_byte & (0x80 >> i)
-                current_bit = self.frame_buffer[wrapped_pos_x + i,
-                                                wrapped_pos_y + j]
+                pos_x = (wrapped_pos_x + i) % self.WIDTH
+                pos_y = (wrapped_pos_y + j) % self.HEIGHT
+                current_bit = self.frame_buffer[pos_x, pos_y]
                 if current_bit == 1 and sprite_bit:
                     self.v[0xF] = 1
-                    self.frame_buffer[wrapped_pos_x + i, wrapped_pos_y + j] = 0
+                    self.frame_buffer[pos_x, pos_y] = 0
                 elif current_bit == 0 and sprite_bit:
-                    self.frame_buffer[wrapped_pos_x + i, wrapped_pos_y + j] = 1
+                    self.frame_buffer[pos_x, pos_y] = 1
 
-        self.draw = True
+        draw_from_np_binary(self.frame_buffer, self.screen)
+        pygame.display.update()
         # test this later
 
     def op_skp_vx(self, opcode: Opcode):
