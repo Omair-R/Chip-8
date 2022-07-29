@@ -289,5 +289,106 @@ class TestCPU(unittest.TestCase):
         testcpu.op_rnd_vx_byte(testopcode)
         self.assertEqual(testcpu.v[3] & 0xF0, 0)
 
+    def test_op_skp_vx(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xE39E))
+
+        testcpu.v[3] = 4
+        testcpu.keys[4] = 1
+        testcpu.op_skp_vx(testopcode)
+        self.assertEqual(testcpu.pc, 0x202)
+
+        testcpu.v[3] = 5
+        testcpu.op_skp_vx(testopcode)
+        self.assertEqual(testcpu.pc, 0x202)
+
+    def test_op_sknp_vx(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xE3A1))
+
+        testcpu.v[3] = 4
+        testcpu.op_sknp_vx(testopcode)
+        self.assertEqual(testcpu.pc, 0x202)
+
+        testcpu.v[3] = 5
+        testcpu.keys[5] = 1
+        testcpu.op_sknp_vx(testopcode)
+        self.assertEqual(testcpu.pc, 0x202)
+
+    def test_op_ld_vx_dt(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF307))
+
+        testcpu.dt = 0x20
+        testcpu.op_ld_vx_dt(testopcode)
+        self.assertEqual(testcpu.v[testopcode.x], 0x20)
+
+    def test_op_ld_dt_vx(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF315))
+
+        testcpu.v[3] = 0x20
+        testcpu.op_ld_dt_vx(testopcode)
+        self.assertEqual(testcpu.dt, 0x20)
+
+    def test_op_ld_st_vx(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF318))
+
+        testcpu.v[3] = 0x20
+        testcpu.op_ld_st_vx(testopcode)
+        self.assertEqual(testcpu.st, 0x20)
+
+    def test_op_add_i_vx(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF31E))
+
+        testcpu.v[3] = 0x20
+        testcpu.op_add_i_vx(testopcode)
+        self.assertEqual(testcpu.i, 0x20)
+
+        testcpu.op_add_i_vx(testopcode)
+        self.assertEqual(testcpu.i, 0x20 + 0x20)
+
+    def test_op_ld_f_vx(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF329))
+
+        testcpu.op_ld_f_vx(testopcode)
+        self.assertEqual(testcpu.i, 0x50)
+        testcpu.v[3] = 3
+        testcpu.op_ld_f_vx(testopcode)
+        self.assertEqual(testcpu.i, 95)
+
+    def test_op_ld_b_vx(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF329))
+
+        testcpu.v[3] = 254
+        testcpu.op_ld_b_vx(testopcode)
+        self.assertEqual(testcpu.ram[testcpu.i], 2)
+        self.assertEqual(testcpu.ram[testcpu.i + 1], 5)
+        self.assertEqual(testcpu.ram[testcpu.i + 2], 4)
+
+    def test_op_ld_i_vx(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF355))
+
+        testcpu.v[:4] = [25, 34, 35, 60]
+
+        testcpu.op_ld_i_vx(testopcode)
+        for i in range(testcpu.v.shape[0]):
+            self.assertEqual(testcpu.ram[testcpu.i + i], testcpu.v[i])
+
+    def test_op_ld_vx_i(self):
+        testcpu = cpu.CPU()
+        testopcode = cpu.Opcode.adapt(np.ushort(0xF355))
+
+        testcpu.ram[testcpu.i:testcpu.i + 4] = [25, 34, 35, 60]
+
+        testcpu.op_ld_vx_i(testopcode)
+        for i in range(testcpu.v.shape[0]):
+            self.assertEqual(testcpu.ram[testcpu.i + i], testcpu.v[i])
+
 
 unittest.main()

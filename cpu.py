@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from unicodedata import decimal
 import numpy as np
 from fonts import FONTS
 
@@ -27,6 +28,9 @@ class Opcode:
 class CPU:
 
     FIRST_ADDRESS_MEMORY = np.ushort(0x200)
+    FONTS_ADDRESS_MEMORY = np.ubyte(0x50)
+    WIDTH = np.ubyte(64)
+    HEIGHT = np.ubyte(32)
 
     def __init__(self):
         self.v = np.zeros(16, dtype=np.ubyte)
@@ -35,11 +39,12 @@ class CPU:
         self.sp: np.ubyte = 0
         self.dt: np.ubyte = 0
         self.st: np.ubyte = 0
-        self.frame_buffer = np.zeros([64, 32], dtype=np.bool_)
+        self.frame_buffer = np.zeros([self.WIDTH, self.HEIGHT], dtype=np.bool_)
         self.pc: np.ushort = self.FIRST_ADDRESS_MEMORY
         self.ram = np.zeros(4096, dtype=np.ubyte)
-        self.keys = np.zeros(16, dtype=np.ubyte)
-        self.ram[0x50:0x50 + FONTS.shape[0]] = FONTS
+        self.keys = np.zeros(16, dtype=np.bool_)
+        self.ram[self.FONTS_ADDRESS_MEMORY:self.FONTS_ADDRESS_MEMORY +
+                 FONTS.shape[0]] = FONTS
 
     def load_rom_to_ram(self, path: str) -> None:
         with open(path, "rb") as file:
@@ -49,7 +54,7 @@ class CPU:
 
     def op_cls(self, opcode: Opcode):
         # 00E0
-        self.frame_buffer = np.zeros([64, 32], dtype=np.bool_)
+        self.frame_buffer = np.zeros([self.WIDTH, self.HEIGHT], dtype=np.bool_)
 
     def op_ret(self, opcode: Opcode):
         # 00EE
@@ -163,19 +168,40 @@ class CPU:
 
     def op_drw_vx_vy_nibble(self, opcode: Opcode):
         # Dxyn
-        raise NotImplementedError
+        wrapped_pos_x = self.v[opcode.x] % self.WIDTH
+        wrapped_pos_y = self.v[opcode.y] % self.HEIGHT
+        self.v[0xF] = 0
+
+        for j in range(opcode.N):
+            sprite_byte = self.ram[self.i + j]
+            for i in range(8):
+                sprite_bit = sprite_byte & (0x80 >> i)
+                current_bit = self.frame_buffer[wrapped_pos_x + i,
+                                                wrapped_pos_y + j]
+                if current_bit == 1 and sprite_bit == 1:
+                    self.v[0xF] = 1
+                    self.frame_buffer[wrapped_pos_x + i, wrapped_pos_y + j] = 0
+                elif current_bit == 0 and sprite_bit == 1:
+                    self.frame_buffer[wrapped_pos_x + i, wrapped_pos_y + j] = 1
+
+        #draw to the screen from here
+        # test this later
 
     def op_skp_vx(self, opcode: Opcode):
         # Ex9E
-        raise NotImplementedError
+        current_key = self.v[opcode.x]
+        if self.keys[current_key] == 1:
+            self.pc += 2
 
     def op_sknp_vx(self, opcode: Opcode):
         # ExA1
-        raise NotImplementedError
+        current_key = self.v[opcode.x]
+        if self.keys[current_key] == 0:
+            self.pc += 2
 
     def op_ld_vx_dt(self, opcode: Opcode):
         # Fx07
-        raise NotImplementedError
+        self.v[opcode.x] = self.dt
 
     def op_ld_vx_k(self, opcode: Opcode):
         # Fx0A
@@ -183,28 +209,31 @@ class CPU:
 
     def op_ld_dt_vx(self, opcode: Opcode):
         # Fx15
-        raise NotImplementedError
+        self.dt = self.v[opcode.x]
 
     def op_ld_st_vx(self, opcode: Opcode):
         # Fx18
-        raise NotImplementedError
+        self.st = self.v[opcode.x]
 
     def op_add_i_vx(self, opcode: Opcode):
         # Fx1E
-        raise NotImplementedError
+        self.i += self.v[opcode.x]
 
     def op_ld_f_vx(self, opcode: Opcode):
         # Fx29
-        raise NotImplementedError
+        self.i = self.FONTS_ADDRESS_MEMORY + (5 * self.v[opcode.x])
 
     def op_ld_b_vx(self, opcode: Opcode):
         # Fx33
-        raise NotImplementedError
+        number = self.v[opcode.x]
+        self.ram[self.i + 2] = number % 10
+        self.ram[self.i + 1] = (number // 10) % 10
+        self.ram[self.i] = (number // 100)
 
     def op_ld_i_vx(self, opcode: Opcode):
         # Fx55
-        raise NotImplementedError
+        self.ram[self.i:self.i + opcode.x + 1] = self.v[:opcode.x + 1]
 
     def op_ld_vx_i(self, opcode: Opcode):
         # Fx65
-        raise NotImplementedError
+        self.v[:opcode.x + 1] = self.ram[self.i:self.i + opcode.x + 1]
